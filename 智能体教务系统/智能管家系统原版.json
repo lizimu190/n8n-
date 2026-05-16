@@ -1,0 +1,967 @@
+{
+  "name": "智能管家系统原版",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "v1/ai-orchestrator",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*",
+          "binaryPropertyName": "data"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1456,
+        480
+      ],
+      "id": "27bac063-bd91-40aa-a8e4-bd10ab9e7cf5",
+      "name": "Webhook",
+      "webhookId": "b9d5f801-8dcc-40de-a280-b335f68f5426"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body }}",
+        "options": {
+          "systemMessage": "你是一个极其精准的后台 API 数据解析引擎。不要进行任何对话，只能输出严格的 JSON 格式数据，所有标点符号必须是英文半角。\n\n【核心分类规则】（按顺序判断）：\n\n1.如果用户的输入中包含任何关于“考试”、“成绩”、“分数”、“考了XX分”、“录入”等描述，你必须绝对、无条件地将其 intent 设为 \"score_record\"，并提取科目(subject)和分数(score，必须是数字)。\n2.如果用户要求查询、统计、计算平均分、最高分、生成成绩单或报表，intent 必须设为 \"report_generation\"，不需要提取 subject 和 score。\n3.如果用户是在查询某些数据、历史记录，intent 设为 \"data_query\"。\n4.如果都不是，intent 设为 \"general_chat\"。\n5.如果用户查询特定科目成绩，请在输出 JSON 时，务必在 entities 中包含 subject 栏位（例如：{“intent”： “data_query”， “entities”： {“subject”： “数学”}}\n6. 识别意图 (intent)：score_record (录入), score_query (查询), generate_report (报表), query_fail (查询不及格)。\n当你收到类似“查询不及格”、“异常成绩预警”时，必须输出 intent 为 query_fail。\n\n【输出格式示范】\n如果用户说：“帮我把数学85分记下来”\n你必须输出：\n{\"intent\": \"score_record\", \"entities\": {\"subject\": \"数学\", \"score\": 85}, \"confidence\": 0.99}\n如果用户说：帮我统计\n【输出格式示范 2 - 统计报表】\n{\"intent\": \"report_generation\", \"entities\": {}, \"confidence\": 0.99}\n【格式绝对红线】\n输出的 JSON 字符串中，所有的双引号、冒号 (:)、逗号 (,) 和大括号，必须、绝对只能使用英文半角符号。严禁出现任何中文全角标点！"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -1248,
+        480
+      ],
+      "id": "9d486c8d-83d2-4384-b9c3-face86dc917a",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "qwen-plus",
+          "mode": "id"
+        },
+        "responsesApiEnabled": false,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -1248,
+        720
+      ],
+      "id": "a3cab2ae-4fce-4971-8249-0114346b0068",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "TRWRWt5lOCWWK2JX",
+          "name": "OpenAi account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "=score_record",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "6fba4e28-0249-48d6-9dad-964e01e400aa"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "098225a4-a16c-43a4-a42f-9e3afb815ee9",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "data_query",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "cdce04e2-1bf5-4403-9201-ea9ab02e7a84",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "report_generation",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "c0e46d9d-9fbc-4cc6-ab6c-15b0ca50b9dd",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "query_fail",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -672,
+        432
+      ],
+      "id": "7dd9cf2e-30d6-4adc-af34-6a10372f5d47",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of $input.all()) {\n  try {\n    const rawOutput = item.json.output; \n\n    const parsedData = JSON.parse(rawOutput);\n    item.json.intent = parsedData.intent;              \n    item.json.confidence = parsedData.confidence;    \n    if (parsedData.entities) {\n        item.json.subject = parsedData.entities.subject; \n        item.json.score = parsedData.entities.score;     \n    }\n    delete item.json.output;\n  } catch (error) {\n    item.json.parse_error = \"解析失败: \" + error.message;\n  }\n}\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -896,
+        480
+      ],
+      "id": "ad64b050-bc0f-4456-8665-9b12b0cced8e",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appeg1D9jQuUaPSb6",
+          "mode": "list",
+          "cachedResultName": "智能成绩系统",
+          "cachedResultUrl": "https://airtable.com/appeg1D9jQuUaPSb6"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblAY5SVCzvFhjrPt",
+          "mode": "list",
+          "cachedResultName": "Score_Records",
+          "cachedResultUrl": "https://airtable.com/appeg1D9jQuUaPSb6/tblAY5SVCzvFhjrPt"
+        },
+        "filterByFormula": "={Subject} = '{{ $json.subject }}'",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -448,
+        96
+      ],
+      "id": "d6af970c-0782-4c4e-b648-a431fa91f6c5",
+      "name": "Search records",
+      "alwaysOutputData": true,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "EBcsgqD80imo2VSi",
+          "name": "Airtable Personal Access Token account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "1f239844-8096-4ae2-a6d4-a09752803941",
+              "leftValue": "={{ $json.id || \"\" }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -224,
+        96
+      ],
+      "id": "f43d13c5-1918-4001-887e-344721f59d1d",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appeg1D9jQuUaPSb6",
+          "mode": "list",
+          "cachedResultName": "智能成绩系统",
+          "cachedResultUrl": "https://airtable.com/appeg1D9jQuUaPSb6"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblAY5SVCzvFhjrPt",
+          "mode": "list",
+          "cachedResultName": "Score_Records",
+          "cachedResultUrl": "https://airtable.com/appeg1D9jQuUaPSb6/tblAY5SVCzvFhjrPt"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "subject": "={{ $('Code in JavaScript').item.json.subject }}",
+            "id": "={{ $json.id }}",
+            "score": "={{ $('Code in JavaScript').item.json.score }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "subject",
+              "displayName": "subject",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "score",
+              "displayName": "score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Last_Updated",
+              "displayName": "Last_Updated",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Todo",
+                  "value": "Todo"
+                },
+                {
+                  "name": "In progress",
+                  "value": "In progress"
+                },
+                {
+                  "name": "Done",
+                  "value": "Done"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Attachments",
+              "displayName": "Attachments",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Attachment Summary",
+              "displayName": "Attachment Summary",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "bad1c082-ee13-4ca7-92f4-9a6a3a22c855",
+      "name": "Update record",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "EBcsgqD80imo2VSi",
+          "name": "Airtable Personal Access Token account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appeg1D9jQuUaPSb6",
+          "mode": "list",
+          "cachedResultName": "智能成绩系统",
+          "cachedResultUrl": "https://airtable.com/appeg1D9jQuUaPSb6"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblAY5SVCzvFhjrPt",
+          "mode": "list",
+          "cachedResultName": "Score_Records",
+          "cachedResultUrl": "https://airtable.com/appeg1D9jQuUaPSb6/tblAY5SVCzvFhjrPt"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "score": "={{ $('Code in JavaScript').first().json.score }}",
+            "subject": "={{ $('Code in JavaScript').first().json.subject }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "subject",
+              "displayName": "subject",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "score",
+              "displayName": "score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Last_Updated",
+              "displayName": "Last_Updated",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        192
+      ],
+      "id": "f7707369-71c3-4bdf-aa6b-7e07c2569d56",
+      "name": "Create a record",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "EBcsgqD80imo2VSi",
+          "name": "Airtable Personal Access Token account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appeg1D9jQuUaPSb6",
+          "mode": "list",
+          "cachedResultName": "智能成绩系统",
+          "cachedResultUrl": "https://airtable.com/appeg1D9jQuUaPSb6"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblAY5SVCzvFhjrPt",
+          "mode": "list",
+          "cachedResultName": "Score_Records",
+          "cachedResultUrl": "https://airtable.com/appeg1D9jQuUaPSb6/tblAY5SVCzvFhjrPt"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -448,
+        480
+      ],
+      "id": "8ce0f0cd-c067-4f83-97d8-0ed5e4da46fe",
+      "name": "Search records1",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "EBcsgqD80imo2VSi",
+          "name": "Airtable Personal Access Token account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 获取所有传入的记录\nconst allRecords = $input.all();\n\nlet totalScore = 0;\nlet highestScore = -1;\nlet validCount = 0;\nlet subjectsInfo = [];\n\n// 遍历所有的记录进行数学计算\nfor (const item of allRecords) {\n  // 🎯 核心修复：根据截图，精准提取小写的 subject 和 score\n  const score = item.json.score;\n  const subject = item.json.subject;\n\n  // 确保分数存在且是有效的数字\n  if (score !== undefined && score !== null && !isNaN(score)) {\n    const numScore = Number(score);\n    totalScore += numScore;\n    validCount++;\n    subjectsInfo.push(`【${subject}】${numScore}分`);\n\n    // 找最高分\n    if (numScore > highestScore) {\n      highestScore = numScore;\n    }\n  }\n}\n\n// 极端情况防呆：如果提取不到有效分数\nif (validCount === 0) {\n  return [{ json: { report_text: \"⚠️ 目前数据库中没有任何成绩记录，请先录入成绩！\" } }];\n}\n\n// 计算平均分 (保留两位小数)\nconst averageScore = (totalScore / validCount).toFixed(2);\n\n// 组装一份排版漂亮的 AI 汇报文案\nconst reportText = `📊 您的智能成绩单已生成！\\n\\n📚 共统计科目：${validCount} 门\\n📈 平均分：${averageScore} 分\\n🏆 最高分：${highestScore} 分\\n\\n📝 明细列表：\\n${subjectsInfo.join(\"\\n\")}`;\n\n// 将纯净的计算结果输出给下一个节点\nreturn [{\n  json: {\n    total_subjects: validCount,\n    total_score: totalScore,\n    average_score: Number(averageScore),\n    highest_score: highestScore,\n    report_text: reportText\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        480
+      ],
+      "id": "1c27d613-01e0-474b-ac3d-0a4cd21e9231",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        480
+      ],
+      "id": "f1799b47-5ed8-41f9-9bb0-72a6c3dfd7d8",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "3b15205e-9a3f-445e-a5c7-8ecf952e470a",
+              "leftValue": "={{ $('Code in JavaScript').item.json.score }}",
+              "rightValue": 60,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        224,
+        192
+      ],
+      "id": "3f0fd23f-91a9-4ff4-80cc-a692d860c367",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={\n  \"report_text\": \"⚠️ 警告：{{ $('Code in JavaScript').item.json.subject }} 仅获得 {{ $('Code in JavaScript').item.json.score }} 分！请重点关注！\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        448,
+        96
+      ],
+      "id": "bae43904-c35b-4a89-9cf8-4b65f05164e8",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"report_text\": \"✅ 录入成功！{{ $('Code in JavaScript').item.json.subject }} 获得了 {{ $('Code in JavaScript').item.json.score }} 分，继续保持！\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        448,
+        288
+      ],
+      "id": "b94bb057-76af-4b61-8de8-533b4ce378a8",
+      "name": "Respond to Webhook2"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appeg1D9jQuUaPSb6",
+          "mode": "list",
+          "cachedResultName": "智能成绩系统",
+          "cachedResultUrl": "https://airtable.com/appeg1D9jQuUaPSb6"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblAY5SVCzvFhjrPt",
+          "mode": "list",
+          "cachedResultName": "Score_Records",
+          "cachedResultUrl": "https://airtable.com/appeg1D9jQuUaPSb6/tblAY5SVCzvFhjrPt"
+        },
+        "filterByFormula": "={Subject} = '{{ $('Code in JavaScript').item.json.subject }}'",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -448,
+        288
+      ],
+      "id": "f828307b-099e-41ce-8a59-14ed727852d0",
+      "name": "Search records2",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "EBcsgqD80imo2VSi",
+          "name": "Airtable Personal Access Token account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"report_text\": \"🔍 查询结果：您的 {{ $('Code in JavaScript').item.json.subject }} 成绩为 {{ $json.score }} 分。\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -224,
+        288
+      ],
+      "id": "eef502f0-1635-4ac7-817e-48ba2ed0d7c5",
+      "name": "Respond to Webhook3"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"report_text\": \"成功更新成绩{{ $json.fields.subject }}考了{{ $json.fields.score }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "17550980-02ee-4fe2-9413-9c824cdf8f3a",
+      "name": "Respond to Webhook4"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"report_text\": \"不好意思，我作为智能成绩系统管家无法解决其他问题\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -464,
+        944
+      ],
+      "id": "7a448e9a-d806-456e-9f7f-04a03d40a890",
+      "name": "Respond to Webhook5"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appeg1D9jQuUaPSb6",
+          "mode": "list",
+          "cachedResultName": "智能成绩系统",
+          "cachedResultUrl": "https://airtable.com/appeg1D9jQuUaPSb6"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblAY5SVCzvFhjrPt",
+          "mode": "list",
+          "cachedResultName": "Score_Records",
+          "cachedResultUrl": "https://airtable.com/appeg1D9jQuUaPSb6/tblAY5SVCzvFhjrPt"
+        },
+        "filterByFormula": "{score} < 60",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -448,
+        672
+      ],
+      "id": "87849ed8-067f-4ce2-a8ab-5b84da1d9b23",
+      "name": "Search records3",
+      "alwaysOutputData": true,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "EBcsgqD80imo2VSi",
+          "name": "Airtable Personal Access Token account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const records = $input.all();\n\n// 💡 1. 識破 n8n 的「假空箱子」騙局\n// 如果是 0 條記錄，或者唯一的一條記錄是個空殼子 (裡面沒有任何 keys)\nconst isDummyEmpty = records.length === 1 && Object.keys(records[0].json).length === 0;\n\nif (records.length === 0 || isDummyEmpty) {\n    return [{ json: { report_text: \"🎉 太棒了！目前沒有任何不及格的科目！\" } }];\n}\n\nlet report = \"⚠️ **不及格科目預警**：\\n\";\nlet actualFails = 0; // 用來計數真正的不及格科目\n\n// 💡 2. 遍歷數據\nrecords.forEach(item => {\n    const data = item.json.fields || item.json; \n    \n    // 抓取真實的列名（請確保中括號裡的字跟你的 Airtable 表頭一致）\n    const subject = data['subject'] || data['科目'] || data['學科'];\n    const score = data['score'] || data['分數'] || data['成績'];\n    \n    // 🛡️ 過濾 Airtable 裡的「幽靈空白行」：如果連科目和分數都沒有，直接跳過\n    if (subject === undefined && score === undefined) return;\n\n    actualFails++;\n    report += `- ${subject || '未知科目'} (${score || 0}分)\\n`;\n});\n\n// 💡 3. 如果遍歷完發現，查出來的全是幽靈空白行，還是報喜！\nif (actualFails === 0) {\n    return [{ json: { report_text: \"🎉 太棒了！目前沒有任何不及格的科目！\" } }];\n}\n\nreturn [{ json: { report_text: report } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        672
+      ],
+      "id": "3454e102-b429-47b7-a3b2-d7b2ab6a986b",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        48,
+        672
+      ],
+      "id": "b06e33b2-64a3-4f55-bfc7-7632e9a4b9d1",
+      "name": "Respond to Webhook6"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Search records",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Search records2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Search records1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Search records3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search records": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Update record",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create a record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search records1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a record": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search records2": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update record": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search records3": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "45272bf2-e189-4446-be9d-ca2673d025f4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "7fe004713c080f1de0665d2f16fc6c614a787f370a80b03b86f52f962699ea80"
+  },
+  "id": "jdRD8bnhAKFGmYhb",
+  "tags": []
+}
